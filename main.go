@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
-	"fmt"
+	// "fmt"
 	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
 	// "go.mongodb.org/mongo-driver/mongo/readpref"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Post struct {
@@ -26,7 +30,7 @@ func ConfigDB() *mongo.Database {
 	return client.Database("blog")
 }
 
-func show() {
+func show() []album {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	collection := ConfigDB().Collection("posts")
 
@@ -37,14 +41,32 @@ func show() {
 	}
 	defer cur.Close(ctx)
 
-	var posts []Post
-	if currErr = cur.All(ctx, &posts); currErr != nil {
+	var albumw []album
+	if currErr = cur.All(ctx, &albumw); currErr != nil {
 		panic(currErr)
 	}
-	fmt.Println(posts)
+	return albumw
 }
 
+type Result struct {
+	Results []album
+}
+
+func index(c *gin.Context) {
+	// object_json := Result{show()}
+	c.JSON(200, gin.H{"result": show()})
+}
 func main() {
 	// insert_some()
-	show()
+	router := gin.Default()
+	router.LoadHTMLGlob("web/templates/**/*")
+
+	router.GET("/about", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "about.html", gin.H{
+			"title": "Main website",
+		})
+	})
+	router.GET("/", index)
+	router.POST("/post", insert_some)
+	router.Run("localhost:8080")
 }
